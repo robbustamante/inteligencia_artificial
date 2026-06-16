@@ -1,0 +1,69 @@
+# Resultado Agente 1 - Primera Celda
+
+Iniciando normalización de datos...
+Dataset cargado: 12,000 filas x 67 columnas
+Proceso terminado.
+
+# Importar Mistar AI - Segunda Celda
+[8]
+8 s
+Requirement already satisfied: mistralai in /usr/local/lib/python3.12/dist-packages (2.4.9)
+Requirement already satisfied: scikit-learn in /usr/local/lib/python3.12/dist-packages (1.9.0)
+Requirement already satisfied: pandas in /usr/local/lib/python3.12/dist-packages (3.0.3)
+Requirement already satisfied: numpy in /usr/local/lib/python3.12/dist-packages (2.4.6)
+Requirement already satisfied: eval-type-backport>=0.2.0 in /usr/local/lib/python3.12/dist-packages (from mistralai) (0.4.0)
+Requirement already satisfied: httpx>=0.28.1 in /usr/local/lib/python3.12/dist-packages (from mistralai) (0.28.1)
+Requirement already satisfied: jsonpath-python>=1.0.6 in /usr/local/lib/python3.12/dist-packages (from mistralai) (1.1.6)
+Requirement already satisfied: opentelemetry-api<2.0.0,>=1.33.1 in /usr/local/lib/python3.12/dist-packages (from mistralai) (1.39.1)
+Requirement already satisfied: opentelemetry-semantic-conventions<0.61,>=0.60b1 in /usr/local/lib/python3.12/dist-packages (from mistralai) (0.60b1)
+Requirement already satisfied: pydantic>=2.11.2 in /usr/local/lib/python3.12/dist-packages (from mistralai) (2.12.3)
+Requirement already satisfied: python-dateutil>=2.8.2 in /usr/local/lib/python3.12/dist-packages (from mistralai) (2.9.0.post0)
+Requirement already satisfied: typing-inspection>=0.4.0 in /usr/local/lib/python3.12/dist-packages (from mistralai) (0.4.2)
+Requirement already satisfied: scipy>=1.10.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn) (1.16.3)
+Requirement already satisfied: joblib>=1.4.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn) (1.5.3)
+Requirement already satisfied: narwhals>=2.0.1 in /usr/local/lib/python3.12/dist-packages (from scikit-learn) (2.22.1)
+Requirement already satisfied: threadpoolctl>=3.5.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn) (3.6.0)
+Requirement already satisfied: anyio in /usr/local/lib/python3.12/dist-packages (from httpx>=0.28.1->mistralai) (4.13.0)
+Requirement already satisfied: certifi in /usr/local/lib/python3.12/dist-packages (from httpx>=0.28.1->mistralai) (2026.5.20)
+Requirement already satisfied: httpcore==1.* in /usr/local/lib/python3.12/dist-packages (from httpx>=0.28.1->mistralai) (1.0.9)
+Requirement already satisfied: idna in /usr/local/lib/python3.12/dist-packages (from httpx>=0.28.1->mistralai) (3.18)
+Requirement already satisfied: h11>=0.16 in /usr/local/lib/python3.12/dist-packages (from httpcore==1.*->httpx>=0.28.1->mistralai) (0.16.0)
+Requirement already satisfied: importlib-metadata<8.8.0,>=6.0 in /usr/local/lib/python3.12/dist-packages (from opentelemetry-api<2.0.0,>=1.33.1->mistralai) (8.7.1)
+Requirement already satisfied: typing-extensions>=4.5.0 in /usr/local/lib/python3.12/dist-packages (from opentelemetry-api<2.0.0,>=1.33.1->mistralai) (4.15.0)
+Requirement already satisfied: annotated-types>=0.6.0 in /usr/local/lib/python3.12/dist-packages (from pydantic>=2.11.2->mistralai) (0.7.0)
+Requirement already satisfied: pydantic-core==2.41.4 in /usr/local/lib/python3.12/dist-packages (from pydantic>=2.11.2->mistralai) (2.41.4)
+Requirement already satisfied: six>=1.5 in /usr/local/lib/python3.12/dist-packages (from python-dateutil>=2.8.2->mistralai) (1.17.0)
+Requirement already satisfied: zipp>=3.20 in /usr/local/lib/python3.12/dist-packages (from importlib-metadata<8.8.0,>=6.0->opentelemetry-api<2.0.0,>=1.33.1->mistralai) (4.1.0)
+Libraries updated successfully.
+
+# Resultado Agente 2 - Tercera Celda
+Iniciando entrenamiento del modelo...
+Dataset cargado: 12,000 filas x 64 features
+Balance del target - Match: 3,222 (26.9%) | No match: 8,778 (73.2%)
+Entrenando: Logistic Regression...
+  AUC=0.5932 | F1=0.3980 | Acc=0.5828 | Overfitting=+0.0154
+Entrenando: Random Forest...
+  AUC=0.5884 | F1=0.3339 | Acc=0.6586 | Overfitting=+0.2967
+Entrenando: Gradient Boosting...
+  AUC=0.5707 | F1=0.1257 | Acc=0.7258 | Overfitting=+0.0954
+Entrenando: KNN...
+  AUC=0.5320 | F1=0.1331 | Acc=0.7197 | Overfitting=+0.2803
+Entrenando: SVM...
+  AUC=0.5874 | F1=0.3903 | Acc=0.5897 | Overfitting=+0.0405
+Modelo seleccionado: Logistic Regression (AUC=0.5932)
+Importancia de features calculada.
+Consultando a Mistral AI...
+Respuesta de Mistral recibida.
+Archivos guardados: agente2_metricas.json, agente2_modelo_info.json
+Proceso terminado.
+
+# Resultado Agente 3 - Cuarta Celda
+Iniciando generacion del reporte final...
+Reportes de agentes anteriores cargados.
+Agente 1: 12,000 filas, 64 features finales
+Agente 2: modelo=Logistic Regression, AUC=0.5932
+Alertas detectadas: 3
+Consultando a Mistral AI...
+Reporte generado por Mistral AI.
+Archivos guardados: agente3_reporte_final.md, agente3_resumen.json
+Proceso terminado.
