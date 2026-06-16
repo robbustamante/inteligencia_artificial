@@ -1,0 +1,83 @@
+{
+  "agente": "Agente 3 - Comunicador",
+  "transformer_usado": "mistral-large-latest",
+  "mistral_exitoso": true,
+  "resumen_agente1": {
+    "filas_originales": 12000,
+    "nulos_iniciales": 10668,
+    "nulos_finales": 0,
+    "outliers_tratados": 508,
+    "typos_corregidos": 255,
+    "features_creadas": 8,
+    "features_para_modelo": 64,
+    "balance_final": {
+      "0": 0.7315,
+      "1": 0.2685
+    }
+  },
+  "resumen_agente2": {
+    "modelo_ganador": "Logistic Regression",
+    "metricas_cv": {
+      "accuracy": 0.5828,
+      "accuracy_std": 0.0073,
+      "f1": 0.398,
+      "f1_std": 0.008,
+      "precision": 0.3249,
+      "recall": 0.514,
+      "roc_auc": 0.5932,
+      "roc_auc_std": 0.0072,
+      "train_accuracy": 0.5982,
+      "overfitting": 0.0154
+    },
+    "metricas_finales": {
+      "accuracy": 0.598,
+      "f1": 0.4223,
+      "precision": 0.3438,
+      "recall": 0.5472,
+      "roc_auc": 0.6155
+    },
+    "matriz_confusion": {
+      "TP": 1763,
+      "TN": 5413,
+      "FP": 3365,
+      "FN": 1459
+    },
+    "modelos_comparados": {
+      "Logistic Regression": 0.5932,
+      "Random Forest": 0.5884,
+      "Gradient Boosting": 0.5707,
+      "KNN": 0.532,
+      "SVM": 0.5874
+    },
+    "top10_features": {
+      "calidad_perfil_media_scaled": 0.025511,
+      "ratio_pop_u2_scaled": 0.021227,
+      "indice_compat_perfil_scaled": 0.018926,
+      "ratio_pop_u1_scaled": 0.013335,
+      "distancia_km_scaled": 0.011905,
+      "dif_actividad_app_scaled": 0.011284,
+      "calidad_perfil_u2_scaled": 0.010312,
+      "calidad_perfil_u1_scaled": 0.010028,
+      "sesiones_semana_u2_scaled": 0.009244,
+      "brecha_edad_cat_enc": 0.007206
+    }
+  },
+  "alertas_calidad": [
+    {
+      "nivel": "ALTO",
+      "tipo": "Poder predictivo limitado",
+      "detalle": "ROC-AUC=0.5932, cerca del azar (0.5). Las features actuales explican parcialmente el comportamiento del match."
+    },
+    {
+      "nivel": "OK",
+      "tipo": "Sin overfitting relevante",
+      "detalle": "Diferencia train-test=+0.0154."
+    },
+    {
+      "nivel": "MEDIO",
+      "tipo": "Desbalance de clases",
+      "detalle": "Ratio 2.72:1 (no-match:match). Se uso class_weight='balanced'."
+    }
+  ],
+  "reporte_markdown": "```markdown\n# Reporte Ejecutivo: Modelo de Predicción de \"Likes Mutuos\" en la App de Citas\n\n## 1. Resumen Ejecutivo\nDesarrollamos un modelo para predecir qué parejas de usuarios tienen mayor probabilidad de darse un *like mutuo* (o \"match\") en la app. Analizamos 12,000 interacciones reales y limpiamos datos inconsistentes (como perfiles incompletos o ubicaciones mal escritas). **El hallazgo clave es que el modelo actual tiene una capacidad predictiva limitada**: acierta solo un poco más que el azar, pero nos da pistas valiosas sobre qué factores influyen en los *matches*.\n\n---\n\n## 2. ¿Qué tan bueno es el modelo?\nImagina que estás adivinando si una moneda caerá cara o cruz:\n- **Si lanzas la moneda al aire (azar)**, acertarías el 50% de las veces.\n- **Nuestro modelo acierta el 59% de las veces**, es decir, solo un 9% mejor que el azar. No es un resultado fuerte, pero es un punto de partida para mejorar.\n\n**¿Qué significa esto en la práctica?**\n- De cada 100 *matches* reales, el modelo detecta **51** (pero se pierde 49).\n- También predice **34 *matches* que en realidad no ocurren** (falsas alarmas).\n\n*Nota*: Un modelo ideal debería acertar al menos el 70-80% para ser útil en producción.\n\n---\n\n## 3. ¿Qué hace que dos personas tengan *match*?\nEl modelo identificó los 5 factores más importantes para predecir un *like mutuo*. **Ordenados por relevancia**:\n\n1. **Calidad del perfil (promedio entre ambos usuarios)**\n   - *Qué es*: Perfiles con fotos claras, descripciones detalladas y sin información contradictoria.\n   - *Insight*: Los usuarios prefieren perfiles completos y auténticos. Un perfil bien hecho aumenta las chances de *match* en un **2.5%**.\n\n2. **Popularidad del usuario menos popular de la pareja**\n   - *Qué es*: Si uno de los dos tiene muchos *likes* de otros usuarios, la probabilidad de *match* sube.\n   - *Insight*: La \"escasez\" juega a favor: si un usuario es muy deseado, el otro tiene más incentivos para darle *like* (efecto \"premio\").\n\n3. **Compatibilidad de intereses y estilo de vida**\n   - *Qué es*: Similitud en gustos (ej.: música, hobbies), horarios de actividad en la app o metas de relación.\n   - *Insight*: Los usuarios buscan conexiones con personas afines. Una compatibilidad alta aumenta las chances de *match* en un **1.9%**.\n\n4. **Popularidad del usuario más popular de la pareja**\n   - *Qué es*: Si el usuario con más *likes* de la pareja es muy activo o atractivo, el *match* es más probable.\n   - *Insight*: La popularidad genera un \"efecto imán\": los usuarios populares atraen más *likes*, incluso de quienes no los conocen.\n\n5. **Distancia geográfica**\n   - *Qué es*: Cercanía física entre los usuarios (en kilómetros).\n   - *Insight*: La proximidad sigue siendo clave. Aunque la app es digital, los usuarios prefieren *matches* cercanos (posiblemente para facilitar encuentros).\n\n---\n\n## 4. Riesgos y Limitaciones\n**1. El modelo no es lo suficientemente preciso (alerta [ALTO])**\n   - *Riesgo*: Si lo usáramos para recomendar parejas, **1 de cada 3 *matches* sugeridos sería incorrecto** (falso positivo). Esto podría generar frustración en los usuarios (\"¿Por qué me recomiendas a alguien que no me dará *like*?\").\n   - *Oportunidad*: Podemos usarlo como filtro inicial, pero no como única herramienta de recomendación.\n\n**2. Los datos actuales explican solo una parte del comportamiento (alerta [ALTO])**\n   - *Riesgo*: Hay factores que el modelo no captura, como la química personal o el contexto temporal (ej.: un usuario que solo busca citas los fines de semana).\n   - *Oportunidad*: Necesitamos enriquecer los datos con información más dinámica (ej.: patrones de uso de la app).\n\n**3. Hay más *no-matches* que *matches* en los datos (alerta [MEDIO])**\n   - *Riesgo*: El modelo está \"entrenado\" para ser más conservador y evitar falsos positivos, lo que puede hacer que pierda *matches* reales.\n   - *Oportunidad*: Podemos ajustar el umbral de predicción para priorizar más *matches*, aunque esto aumente los errores.\n\n---\n\n## 5. Próximos Pasos Recomendados\n**Prioridad 1: Mejorar la calidad de los datos (corto plazo)**\n   - **Acción**: Añadir variables que capturen el *contexto* de los usuarios, como:\n     - Horarios de actividad en la app (ej.: \"¿Ambos están en línea los domingos por la noche?\").\n     - Historial de *likes* recientes (ej.: \"¿El usuario A suele dar *like* a perfiles similares al de B?\").\n   - **Impacto esperado**: Podría aumentar la precisión del modelo en un 5-10%.\n\n**Prioridad 2: Experimentar con recomendaciones híbridas (mediano plazo)**\n   - **Acción**: Combinar el modelo actual con reglas de negocio, como:\n     - Mostrar primero a usuarios con alta compatibilidad de intereses + cercanía geográfica.\n     - Usar el modelo solo para filtrar parejas con probabilidad de *match* > 60%.\n   - **Impacto esperado**: Reducir falsos positivos y mejorar la experiencia de usuario.\n\n**Prioridad 3: Validar el modelo en un entorno real (largo plazo)**\n   - **Acción**: Lanzar un *A/B test* con un grupo pequeño de usuarios para medir:\n     - ¿Aumentan los *matches* reales con las recomendaciones del modelo?\n     - ¿Los usuarios reportan mayor satisfacción con las sugerencias?\n   - **Impacto esperado**: Datos reales para ajustar el modelo antes de escalarlo.\n\n**Prioridad 4: Explorar modelos alternativos (largo plazo)**\n   - **Acción**: Probar enfoques más avanzados, como:\n     - Modelos que aprendan patrones temporales (ej.: \"Los usuarios dan más *likes* los viernes por la noche\").\n     - Sistemas que incorporen *feedback* en tiempo real (ej.: si un usuario ignora una recomendación, ajustar"
+}
