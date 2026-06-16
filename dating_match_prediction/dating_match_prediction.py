@@ -9,12 +9,6 @@ Original file is located at
 # **Dataset CSV**
 """
 
-# +--------------------------------------------------------------------------+
-# |          AGENTE 1 - NORMALIZADOR / PREPROCESADOR                         |
-# |          Pipeline: Dating Match Prediction                               |
-# |          Pasos: Limpieza - Imputacion - Outliers - Encoding - Escalado   |
-# +--------------------------------------------------------------------------+
-
 import pandas as pd
 import numpy as np
 import json
@@ -28,17 +22,13 @@ from sklearn.preprocessing import (
 )
 from sklearn.pipeline import Pipeline
 
-# -- Rutas --------------------------------------------------------------------
-INPUT_PATH       = 'dating_match_raw.csv'          # subir a Colab
-OUTPUT_CLEAN     = 'dating_match_procesado.csv'    # sale limpio
-OUTPUT_REPORT    = 'agente1_reporte.json'          # reporte para el Agente 3
-OUTPUT_PIPELINE  = 'agente1_pipeline_info.json'    # metadata para el Agente 2
+# Rutas de archivos
+INPUT_PATH       = 'dating_match_raw.csv'
+OUTPUT_CLEAN     = 'dating_match_procesado.csv'
+OUTPUT_REPORT    = 'agente1_reporte.json'
+OUTPUT_PIPELINE  = 'agente1_pipeline_info.json'
 
-# -- PASO 0: CARGA Y SNAPSHOT INICIAL -----------------------------------------
-
-print("=" * 65)
-print("  AGENTE 1 - NORMALIZADOR")
-print("=" * 65)
+print("Iniciando normalización de datos...")
 
 df = pd.read_csv(INPUT_PATH)
 
@@ -50,35 +40,25 @@ snapshot_inicial = {
     "balance_target":     df['like_mutuo'].value_counts(normalize=True).round(4).to_dict(),
 }
 
-print(f"\nDataset cargado: {df.shape[0]:,} filas x {df.shape[1]} columnas")
-print(f"   Nulos totales: {snapshot_inicial['nulos_totales_inicio']:,}")
-print(f"   Balance target - Match: {snapshot_inicial['balance_target'].get(1, 0)*100:.1f}% | "
-      f"No match: {snapshot_inicial['balance_target'].get(0, 0)*100:.1f}%")
+print(f"Dataset cargado: {df.shape[0]:,} filas x {df.shape[1]} columnas")
 
-# -- DEFINICION DE GRUPOS DE COLUMNAS -----------------------------------------
-
-# Columnas que se descartan (IDs, filtros de orientacion, leakage)
+# Grupos de columnas
 COLS_DESCARTAR = [
     'par_id', 'user1_id', 'user2_id',
-    'orientacion_u1', 'orientacion_u2',   # filtro previo, no feature
-    'prob_match_calculada',                # leakage directo del target
+    'orientacion_u1', 'orientacion_u2',
+    'prob_match_calculada',
 ]
 
-# Columnas de solo referencia (no entran al modelo pero quedan en el CSV)
 COLS_REFERENCIA = ['genero_u1', 'genero_u2', 'ciudad_u1', 'ciudad_u2']
-
 TARGET = 'like_mutuo'
 
-# Categoricas con orden (Ordinal Encoding)
 COLS_ORDINAL = {
     'educacion_u1': ['Primaria', 'Secundaria', 'Técnico', 'Universitario', 'Postgrado'],
     'educacion_u2': ['Primaria', 'Secundaria', 'Técnico', 'Universitario', 'Postgrado'],
 }
 
-# Categoricas sin orden (Label Encoding - pocas clases, <25)
 COLS_LABEL = ['profesion_u1', 'profesion_u2']
 
-# Numericas continuas que se escalaran con StandardScaler
 COLS_STANDARD = [
     'distancia_km', 'dif_edad', 'dif_altura_cm', 'dif_peso_kg',
     'jaccard_intereses', 'lifestyle_score', 'tasa_like_u1', 'tasa_like_u2',
@@ -86,7 +66,6 @@ COLS_STANDARD = [
     'popularidad_media', 'dif_actividad_app',
 ]
 
-# Numericas en rango conocido [0-1] o conteos bajos - MinMaxScaler
 COLS_MINMAX = [
     'intereses_comunes', 'idiomas_comunes', 'dif_educacion',
     'sesiones_semana_u1', 'sesiones_semana_u2',
@@ -96,7 +75,6 @@ COLS_MINMAX = [
     'reportes_u1', 'reportes_u2',
 ]
 
-# Numericas grandes (dias, likes) - StandardScaler
 COLS_STANDARD_BIG = [
     'edad_u1', 'edad_u2',
     'altura_u1', 'altura_u2',
@@ -105,7 +83,6 @@ COLS_STANDARD_BIG = [
     'likes_recibidos_u1', 'likes_recibidos_u2',
 ]
 
-# Binarias (ya son 0/1, no se escalan)
 COLS_BINARIAS = [
     'misma_ciudad', 'mismo_busca', 'mismo_fuma', 'mismo_alcohol',
     'mismo_ejercicio', 'mismo_quiere_hijos', 'misma_religion',
@@ -114,13 +91,10 @@ COLS_BINARIAS = [
     'premium_u1', 'premium_u2',
 ]
 
-log_pasos = []   # registro de cada transformacion aplicada
+log_pasos = []
 
-# -- PASO 1: DESCARTE DE COLUMNAS INNECESARIAS --------------------------------
-
-print("\n-- PASO 1: Descarte de columnas ----------------------------------")
+# Descarte de columnas
 df.drop(columns=COLS_DESCARTAR, inplace=True, errors='ignore')
-print(f"   Eliminadas {len(COLS_DESCARTAR)} columnas: {COLS_DESCARTAR}")
 log_pasos.append({
     "paso": 1,
     "nombre": "Descarte de columnas",
@@ -128,10 +102,7 @@ log_pasos.append({
     "filas_restantes": len(df),
 })
 
-# -- PASO 2: LIMPIEZA DE CIUDADES (typos, normalizacion de texto) -----------
-
-print("\n-- PASO 2: Limpieza de ciudades (typos) --------------------------")
-
+# Limpieza de ciudades
 CIUDAD_MAP = {
     'asuncion':            'Asunción',
     'ASUNCIÓN':            'Asunción',
@@ -156,71 +127,50 @@ for col in ['ciudad_u1', 'ciudad_u2']:
     df[col] = df[col].replace(CIUDAD_MAP)
     corr = (antes != df[col]).sum()
     typos_corregidos += corr
-    print(f"   {col}: {corr} correcciones aplicadas")
 
 df['misma_ciudad'] = (df['ciudad_u1'] == df['ciudad_u2']).astype(int)
 
 log_pasos.append({
     "paso": 2,
     "nombre": "Limpieza de ciudades",
-    "detalle": f"Typos corregidos: {typos_corregidos}. misma_ciudad recalculada.",
+    "detalle": f"Correcciones: {typos_corregidos}. misma_ciudad actualizada.",
 })
 
-# -- PASO 3: DETECCION Y TRATAMIENTO DE OUTLIERS ----------------------------
-
-print("\n-- PASO 3: Outliers ----------------------------------------------")
-
+# Outliers
 outlier_log = {}
-
 mask_edad = ~df['edad_u1'].between(18, 75)
-n_edad = mask_edad.sum()
 df.loc[mask_edad, 'edad_u1'] = np.nan
-print(f"   edad_u1: {n_edad} valores imposibles - NaN")
-outlier_log['edad_u1'] = int(n_edad)
+outlier_log['edad_u1'] = int(mask_edad.sum())
 
 mask_altura = ~df['altura_u1'].between(140, 220)
-n_altura = mask_altura.sum()
 df.loc[mask_altura, 'altura_u1'] = np.nan
-print(f"   altura_u1: {n_altura} valores imposibles - NaN")
-outlier_log['altura_u1'] = int(n_altura)
+outlier_log['altura_u1'] = int(mask_altura.sum())
 
 q1_d = df['distancia_km'].quantile(0.25)
 q3_d = df['distancia_km'].quantile(0.75)
 iqr_d = q3_d - q1_d
 cap_dist = q3_d + 3 * iqr_d
 mask_dist = df['distancia_km'] > cap_dist
-n_dist = mask_dist.sum()
 df.loc[mask_dist, 'distancia_km'] = cap_dist
-print(f"   distancia_km: {n_dist} outliers - capeados en {cap_dist:.1f} km")
-outlier_log['distancia_km'] = int(n_dist)
+outlier_log['distancia_km'] = int(mask_dist.sum())
 
 cap_act = df['dif_actividad_app'].quantile(0.99)
 mask_act = df['dif_actividad_app'] > cap_act
-n_act = mask_act.sum()
 df.loc[mask_act, 'dif_actividad_app'] = cap_act
-print(f"   dif_actividad_app: {n_act} outliers - capeados en {cap_act:.0f}")
-outlier_log['dif_actividad_app'] = int(n_act)
+outlier_log['dif_actividad_app'] = int(mask_act.sum())
 
 cap_pop = df['popularidad_media'].quantile(0.99)
 mask_pop = df['popularidad_media'] > cap_pop
-n_pop = mask_pop.sum()
 df.loc[mask_pop, 'popularidad_media'] = cap_pop
-print(f"   popularidad_media: {n_pop} outliers - capeados en {cap_pop:.4f}")
-outlier_log['popularidad_media'] = int(n_pop)
+outlier_log['popularidad_media'] = int(mask_pop.sum())
 
 log_pasos.append({
     "paso": 3,
     "nombre": "Tratamiento de outliers",
     "detalle": outlier_log,
-    "metodo": "Valores imposibles - NaN | Outliers estadisticos - Cap IQR/P99",
 })
 
-# -- PASO 4: IMPUTACION DE NULOS --------------------------------------------
-
-print("\n-- PASO 4: Imputacion de nulos -----------------------------------")
-
-nulos_antes = df.isnull().sum().sum()
-
+# Imputacion de nulos
 cols_imputar_mediana = [
     'dif_altura_cm', 'dif_peso_kg', 'distancia_km',
     'tasa_like_u1', 'tasa_like_u2',
@@ -231,34 +181,21 @@ cols_imputar_mediana = [
 imp_median = SimpleImputer(strategy='median')
 for col in cols_imputar_mediana:
     if col in df.columns and df[col].isnull().sum() > 0:
-        antes = df[col].isnull().sum()
         df[col] = imp_median.fit_transform(df[[col]]).ravel()
-        print(f"   {col}: {antes} nulos - mediana={df[col].median():.3f}")
 
 cols_imputar_moda = ['idiomas_comunes', 'dias_login_u1', 'dias_login_u2']
 imp_moda = SimpleImputer(strategy='most_frequent')
 for col in cols_imputar_moda:
     if col in df.columns and df[col].isnull().sum() > 0:
-        antes = df[col].isnull().sum()
         df[col] = imp_moda.fit_transform(df[[col]]).ravel()
-        print(f"   {col}: {antes} nulos - moda")
-
-nulos_despues = df.isnull().sum().sum()
-print(f"\n   Nulos antes: {nulos_antes:,} - despues: {nulos_despues:,}")
 
 log_pasos.append({
     "paso": 4,
     "nombre": "Imputacion de nulos",
-    "detalle": {
-        "nulos_antes": int(nulos_antes),
-        "nulos_despues": int(nulos_despues),
-    },
+    "detalle": {"nulos_antes": int(snapshot_inicial['nulos_totales_inicio'])},
 })
 
-# -- PASO 5: FEATURE ENGINEERING --------------------------------------------
-
-print("\n-- PASO 5: Feature Engineering -----------------------------------")
-
+# Feature Engineering
 df['actividad_score_u1'] = (df['sesiones_semana_u1'] * np.log1p(df['dias_app_u1'])).round(4)
 df['actividad_score_u2'] = (df['sesiones_semana_u2'] * np.log1p(df['dias_app_u2'])).round(4)
 df['dif_actividad_score'] = (abs(df['actividad_score_u1'] - df['actividad_score_u2'])).round(4)
@@ -269,49 +206,34 @@ df['indice_compat_perfil'] = (df['jaccard_intereses'] * 0.4 + df['lifestyle_scor
 df['zona_distancia'] = pd.cut(df['distancia_km'], bins=[-1, 12, 50, 150, 9999], labels=['misma_zona', 'ciudad_cercana', 'interior', 'frontera']).astype(str)
 df['brecha_edad_cat'] = pd.cut(df['dif_edad'], bins=[-1, 2, 5, 10, 100], labels=['similar', 'poca', 'moderada', 'grande']).astype(str)
 
-nuevos_features = ['actividad_score_u1', 'actividad_score_u2', 'dif_actividad_score', 'ratio_pop_u1', 'ratio_pop_u2', 'indice_compat_perfil', 'zona_distancia', 'brecha_edad_cat']
-print(f"   {len(nuevos_features)} nuevas features creadas")
-
 COLS_STANDARD.extend(['actividad_score_u1', 'actividad_score_u2', 'dif_actividad_score', 'ratio_pop_u1', 'ratio_pop_u2', 'indice_compat_perfil'])
 
 log_pasos.append({
     "paso": 5,
     "nombre": "Feature Engineering",
-    "detalle": f"Features creadas: {nuevos_features}",
 })
 
-# -- PASO 6: ENCODING DE CATEGORICAS ----------------------------------------
-
-print("\n-- PASO 6: Encoding de categoricas -------------------------------")
-
-encoding_log = {}
+# Encoding
 for col, categorias in COLS_ORDINAL.items():
     if col in df.columns:
         enc = OrdinalEncoder(categories=[categorias], handle_unknown='use_encoded_value', unknown_value=-1)
         df[col + '_enc'] = enc.fit_transform(df[[col]]).astype(int)
-        encoding_log[col] = "OrdinalEncoder"
 
 for col in COLS_LABEL:
     if col in df.columns:
         le = LabelEncoder()
         df[col + '_enc'] = le.fit_transform(df[col].astype(str))
-        encoding_log[col] = f"LabelEncoder ({len(le.classes_)} clases)"
 
 for col in ['zona_distancia', 'brecha_edad_cat']:
     le = LabelEncoder()
     df[col + '_enc'] = le.fit_transform(df[col].astype(str))
-    encoding_log[col] = "LabelEncoder"
 
 log_pasos.append({
     "paso": 6,
     "nombre": "Encoding de categoricas",
-    "detalle": encoding_log,
 })
 
-# -- PASO 7: ESCALADO DE NUMERICAS ------------------------------------------
-
-print("\n-- PASO 7: Escalado de numericas ---------------------------------")
-
+# Escalado
 scaler_std = StandardScaler()
 scaler_mm  = MinMaxScaler()
 
@@ -325,17 +247,10 @@ df = pd.concat([df, df_std, df_mm], axis=1)
 
 log_pasos.append({
     "paso": 7,
-    "nombre": "Escalado",
-    "detalle": {
-        "StandardScaler": cols_std_presentes,
-        "MinMaxScaler":   cols_mm_presentes,
-    },
+    "nombre": "Escalado de variables",
 })
 
-# -- PASO 8: CONSTRUCCION DEL DATASET FINAL PARA EL AGENTE 2 ----------------
-
-print("\n-- PASO 8: Dataset final para el Agente 2 ------------------------")
-
+# Dataset final
 FEATURES_MODELO = (
     [c + '_scaled' for c in cols_std_presentes]
     + [c + '_scaled' for c in cols_mm_presentes]
@@ -347,13 +262,9 @@ df_modelo = df[FEATURES_MODELO + [TARGET]].copy()
 COLS_REF_FINAL = [c for c in COLS_REFERENCIA if c in df.columns]
 df_completo = df[COLS_REF_FINAL + ['zona_distancia', 'brecha_edad_cat'] + FEATURES_MODELO + [TARGET]].copy()
 
-# -- PASO 9: GUARDAR ARCHIVOS ------------------------------------------------
-
-print("\n-- PASO 9: Guardando archivos ------------------------------------")
 df_completo.to_csv(OUTPUT_CLEAN, index=False, encoding='utf-8-sig')
 
-# -- PASO 10: GENERAR REPORTE JSON (para Agente 3) --------------------------
-
+# Reportes
 snapshot_final = {
     "filas_finales":          int(len(df_completo)),
     "features_para_modelo":   len(FEATURES_MODELO),
@@ -364,7 +275,7 @@ snapshot_final = {
 }
 
 reporte = {
-    "agente":           "Agente 1 - Normalizador",
+    "agente":           "Normalizador",
     "dataset_entrada":  INPUT_PATH,
     "dataset_salida":   OUTPUT_CLEAN,
     "snapshot_inicial": snapshot_inicial,
@@ -387,15 +298,573 @@ with open(OUTPUT_REPORT,   'w', encoding='utf-8') as f:
 with open(OUTPUT_PIPELINE,  'w', encoding='utf-8') as f:
     json.dump(pipeline_info, f, ensure_ascii=False, indent=2)
 
-# -- RESUMEN FINAL ------------------------------------------------------------
+print("Proceso terminado.")
 
-print("\n" + "=" * 65)
-print("  AGENTE 1 COMPLETADO")
-print("=" * 65)
-print(f"  Filas procesadas:       {snapshot_inicial['filas_originales']:>8,}")
-print(f"  Nulos eliminados:       {snapshot_inicial['nulos_totales_inicio'] - snapshot_final['nulos_totales_final']:>8,}")
-print(f"  Outliers tratados:      {sum(outlier_log.values()):>8,}")
-print(f"  Typos de ciudades:      {typos_corregidos:>8,}")
-print(f"  Features para modelo:   {len(FEATURES_MODELO):>8,}")
-print("=" * 65)
-print("\n  Listo para el AGENTE 2")
+!pip install --upgrade mistralai scikit-learn pandas numpy
+import mistralai
+print("Libraries updated successfully.")
+
+import pandas as pd
+import numpy as np
+import json
+import warnings
+from google.colab import userdata
+warnings.filterwarnings('ignore')
+
+from sklearn.model_selection import StratifiedKFold, cross_validate
+from sklearn.linear_model    import LogisticRegression
+from sklearn.ensemble        import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.neighbors       import KNeighborsClassifier
+from sklearn.svm             import SVC
+from sklearn.metrics         import (
+    roc_auc_score, f1_score, precision_score,
+    recall_score, accuracy_score, confusion_matrix,
+)
+from sklearn.inspection import permutation_importance
+
+try:
+    from mistralai import Mistral
+except ImportError:
+    from mistralai.client import Mistral
+
+# Rutas de archivos
+API_KEY_MISTRAL = userdata.get('API_KEY_MISTRAL')
+MISTRAL_MODEL    = "mistral-large-latest"
+INPUT_PROCESADO  = "dating_match_procesado.csv"
+INPUT_PIPELINE   = "agente1_pipeline_info.json"
+OUTPUT_METRICAS  = "agente2_metricas.json"
+OUTPUT_MODELO    = "agente2_modelo_info.json"
+N_SPLITS         = 5
+
+print("Iniciando entrenamiento del modelo...")
+
+df = pd.read_csv(INPUT_PROCESADO)
+
+with open(INPUT_PIPELINE, encoding='utf-8') as f:
+    pipeline_info = json.load(f)
+
+FEATURES = pipeline_info['features_modelo']
+TARGET   = pipeline_info['target']
+
+X = df[FEATURES].values
+y = df[TARGET].values
+
+print(f"Dataset cargado: {X.shape[0]:,} filas x {X.shape[1]} features")
+print(f"Balance del target - Match: {y.sum():,} ({y.mean()*100:.1f}%) | No match: {(y==0).sum():,} ({(y==0).mean()*100:.1f}%)")
+
+# Modelos candidatos
+modelos = {
+    "Logistic Regression": LogisticRegression(
+        max_iter=500,
+        class_weight='balanced',
+        random_state=42,
+    ),
+    "Random Forest": RandomForestClassifier(
+        n_estimators=150,
+        max_depth=12,
+        min_samples_leaf=5,
+        class_weight='balanced',
+        random_state=42,
+        n_jobs=-1,
+    ),
+    "Gradient Boosting": GradientBoostingClassifier(
+        n_estimators=150,
+        max_depth=5,
+        learning_rate=0.08,
+        subsample=0.85,
+        random_state=42,
+    ),
+    "KNN": KNeighborsClassifier(
+        n_neighbors=11,
+        weights='distance',
+        n_jobs=-1,
+    ),
+    "SVM": SVC(
+        kernel='rbf',
+        C=1.0,
+        gamma='scale',
+        class_weight='balanced',
+        probability=True,
+        random_state=42,
+    ),
+}
+
+# Validacion cruzada estratificada
+cv      = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=42)
+scoring = ['accuracy', 'f1', 'precision', 'recall', 'roc_auc']
+
+resultados_cv = {}
+
+for nombre, modelo in modelos.items():
+    print(f"Entrenando: {nombre}...")
+    cvs = cross_validate(
+        modelo, X, y,
+        cv=cv,
+        scoring=scoring,
+        return_train_score=True,
+        n_jobs=-1,
+    )
+    resultados_cv[nombre] = {
+        "accuracy":      round(float(cvs['test_accuracy'].mean()),  4),
+        "accuracy_std":  round(float(cvs['test_accuracy'].std()),   4),
+        "f1":            round(float(cvs['test_f1'].mean()),        4),
+        "f1_std":        round(float(cvs['test_f1'].std()),         4),
+        "precision":     round(float(cvs['test_precision'].mean()), 4),
+        "recall":        round(float(cvs['test_recall'].mean()),    4),
+        "roc_auc":       round(float(cvs['test_roc_auc'].mean()),   4),
+        "roc_auc_std":   round(float(cvs['test_roc_auc'].std()),    4),
+        "train_accuracy":round(float(cvs['train_accuracy'].mean()), 4),
+        "overfitting":   round(
+            float(cvs['train_accuracy'].mean()) - float(cvs['test_accuracy'].mean()), 4
+        ),
+    }
+    r = resultados_cv[nombre]
+    print(f"  AUC={r['roc_auc']:.4f} | F1={r['f1']:.4f} | Acc={r['accuracy']:.4f} | Overfitting={r['overfitting']:+.4f}")
+
+# Seleccion del mejor modelo por ROC-AUC
+mejor_nombre   = max(resultados_cv, key=lambda k: resultados_cv[k]['roc_auc'])
+mejor_metricas = resultados_cv[mejor_nombre]
+print(f"Modelo seleccionado: {mejor_nombre} (AUC={mejor_metricas['roc_auc']:.4f})")
+
+# Entrenamiento final sobre el dataset completo
+modelo_final = modelos[mejor_nombre]
+modelo_final.fit(X, y)
+
+y_pred      = modelo_final.predict(X)
+y_pred_prob = modelo_final.predict_proba(X)[:, 1]
+
+metricas_finales = {
+    "accuracy":  round(float(accuracy_score(y, y_pred)),      4),
+    "f1":        round(float(f1_score(y, y_pred)),            4),
+    "precision": round(float(precision_score(y, y_pred)),     4),
+    "recall":    round(float(recall_score(y, y_pred)),        4),
+    "roc_auc":   round(float(roc_auc_score(y, y_pred_prob)),  4),
+}
+
+cm = confusion_matrix(y, y_pred)
+tn, fp, fn, tp = cm.ravel()
+
+# Importancia de features por permutacion
+perm_imp = permutation_importance(
+    modelo_final, X, y,
+    n_repeats=10,
+    random_state=42,
+    n_jobs=-1,
+    scoring='roc_auc',
+)
+
+importancias = pd.Series(perm_imp.importances_mean, index=FEATURES).sort_values(ascending=False)
+top10_dict   = {k: round(float(v), 6) for k, v in importancias.head(10).items()}
+todas_dict   = {k: round(float(v), 6) for k, v in importancias.items()}
+
+print("Importancia de features calculada.")
+
+# Analisis con Mistral AI
+tabla_comparativa = "\n".join([
+    f"  - {nombre}: AUC={m['roc_auc']:.4f}, F1={m['f1']:.4f}, Acc={m['accuracy']:.4f}, Overfitting={m['overfitting']:+.4f}"
+    for nombre, m in resultados_cv.items()
+])
+
+top10_texto = "\n".join([
+    f"  {i+1}. {feat}: {imp:+.4f}"
+    for i, (feat, imp) in enumerate(top10_dict.items())
+])
+
+prompt_analisis = f"""
+Eres un experto en Machine Learning. Analiza los resultados del entrenamiento
+de un modelo de clasificacion binaria para predecir "like mutuo" en una app de
+citas (match=1, no match=0).
+
+Contexto:
+- Dataset: {X.shape[0]:,} pares de usuarios compatibles por orientacion sexual
+- Features: {X.shape[1]} variables (intereses, distancia, actividad, perfil, estilo de vida)
+- Desbalance: 27% positivos / 73% negativos, se uso class_weight='balanced'
+- Validacion: {N_SPLITS}-Fold Stratified Cross-Validation
+
+Resultados por modelo:
+{tabla_comparativa}
+
+Modelo seleccionado: {mejor_nombre}
+- ROC-AUC: {mejor_metricas['roc_auc']:.4f} +/- {mejor_metricas['roc_auc_std']:.4f}
+- F1: {mejor_metricas['f1']:.4f}
+- Accuracy: {mejor_metricas['accuracy']:.4f}
+- Precision: {mejor_metricas['precision']:.4f}
+- Recall: {mejor_metricas['recall']:.4f}
+- Overfitting: {mejor_metricas['overfitting']:+.4f}
+
+Metricas finales (entrenamiento completo):
+- Accuracy: {metricas_finales['accuracy']:.4f}
+- F1: {metricas_finales['f1']:.4f}
+- ROC-AUC: {metricas_finales['roc_auc']:.4f}
+- Matriz de confusion: TP={tp}, TN={tn}, FP={fp}, FN={fn}
+
+Top 10 features mas importantes (Permutation Importance):
+{top10_texto}
+
+Tarea: proporciona un analisis tecnico en espanol con estas secciones:
+1. Justificacion de la seleccion del modelo
+2. Interpretacion de las metricas
+3. Interpretacion de las features
+4. Riesgos y advertencias
+5. Recomendaciones de mejora
+
+Maximo 500 palabras. Tono tecnico pero comprensible.
+""".strip()
+
+print("Consultando a Mistral AI...")
+
+try:
+    client = Mistral(api_key=API_KEY_MISTRAL)
+    response = client.chat.complete(
+        model=MISTRAL_MODEL,
+        messages=[
+            {
+                "role":    "system",
+                "content": "Eres un experto en Machine Learning. Respondes siempre en espanol, de forma tecnica y estructurada.",
+            },
+            {
+                "role":    "user",
+                "content": prompt_analisis,
+            },
+        ],
+        temperature=0.3,
+        max_tokens=800,
+    )
+    analisis_mistral = response.choices[0].message.content
+    mistral_ok = True
+    print("Respuesta de Mistral recibida.")
+except Exception as e:
+    analisis_mistral = f"[Error al consultar Mistral: {str(e)}]"
+    mistral_ok = False
+    print(f"Error Mistral: {e}")
+
+# Guardar resultados
+reporte_metricas = {
+    "agente":              "Agente 2 - Entrenador del Modelo",
+    "problema":            "Clasificacion binaria - like_mutuo",
+    "dataset":             INPUT_PROCESADO,
+    "n_filas":             int(X.shape[0]),
+    "n_features":          int(X.shape[1]),
+    "validacion":          f"StratifiedKFold({N_SPLITS} folds)",
+    "balance_clases":      {"0_no_match": int((y==0).sum()), "1_match": int(y.sum())},
+    "modelos_evaluados":   resultados_cv,
+    "modelo_seleccionado": {
+        "nombre":           mejor_nombre,
+        "criterio":         "ROC-AUC (cross-validation)",
+        "metricas_cv":      mejor_metricas,
+        "metricas_finales": metricas_finales,
+        "matriz_confusion": {
+            "TP": int(tp), "TN": int(tn),
+            "FP": int(fp), "FN": int(fn),
+        },
+    },
+    "importancia_features": {
+        "top_10": top10_dict,
+        "todas":  todas_dict,
+    },
+    "analisis_mistral": {
+        "modelo_usado": MISTRAL_MODEL,
+        "exitoso":      mistral_ok,
+        "analisis":     analisis_mistral,
+    },
+}
+
+modelo_info = {
+    "modelo_nombre":    mejor_nombre,
+    "features":         FEATURES,
+    "target":           TARGET,
+    "n_features":       int(X.shape[1]),
+    "metricas_cv":      mejor_metricas,
+    "metricas_finales": metricas_finales,
+    "top10_features":   top10_dict,
+    "balance_clases":   {"0": int((y==0).sum()), "1": int(y.sum())},
+    "analisis_mistral": analisis_mistral,
+}
+
+with open(OUTPUT_METRICAS, 'w', encoding='utf-8') as f:
+    json.dump(reporte_metricas, f, ensure_ascii=False, indent=2)
+
+with open(OUTPUT_MODELO, 'w', encoding='utf-8') as f:
+    json.dump(modelo_info, f, ensure_ascii=False, indent=2)
+
+print(f"Archivos guardados: {OUTPUT_METRICAS}, {OUTPUT_MODELO}")
+print("Proceso terminado.")
+
+import pandas as pd
+import numpy as np
+import json
+import warnings
+from google.colab import userdata
+warnings.filterwarnings('ignore')
+
+try:
+    from mistralai import Mistral
+except ImportError:
+    from mistralai.client import Mistral
+
+# Rutas de archivos
+API_KEY_MISTRAL = userdata.get('API_KEY_MISTRAL')
+MISTRAL_MODEL    = "mistral-large-latest"
+INPUT_REPORTE1   = "agente1_reporte.json"
+INPUT_PIPELINE   = "agente1_pipeline_info.json"
+INPUT_METRICAS2  = "agente2_metricas.json"
+OUTPUT_REPORTE   = "agente3_reporte_final.md"
+OUTPUT_JSON      = "agente3_resumen.json"
+
+print("Iniciando generacion del reporte final...")
+
+with open(INPUT_REPORTE1, encoding='utf-8') as f:
+    reporte1 = json.load(f)
+
+with open(INPUT_PIPELINE, encoding='utf-8') as f:
+    pipeline_info = json.load(f)
+
+with open(INPUT_METRICAS2, encoding='utf-8') as f:
+    reporte2 = json.load(f)
+
+print("Reportes de agentes anteriores cargados.")
+
+# Extraccion de datos clave del Agente 1
+snap_ini = reporte1['snapshot_inicial']
+snap_fin = reporte1['snapshot_final']
+
+resumen_a1 = {
+    "filas_originales":     snap_ini['filas_originales'],
+    "nulos_iniciales":      snap_ini['nulos_totales_inicio'],
+    "nulos_finales":        snap_fin['nulos_totales_final'],
+    "outliers_tratados":    sum(snap_fin['outliers_tratados'].values()),
+    "typos_corregidos":     snap_fin['typos_ciudades_corregidos'],
+    "features_creadas":     8,
+    "features_para_modelo": snap_fin['features_para_modelo'],
+    "balance_final":        snap_fin['balance_target_final'],
+}
+
+# Extraccion de datos clave del Agente 2
+modelo_sel   = reporte2['modelo_seleccionado']
+modelos_eval = reporte2['modelos_evaluados']
+top10_feat   = reporte2['importancia_features']['top_10']
+
+resumen_a2 = {
+    "modelo_ganador":     modelo_sel['nombre'],
+    "metricas_cv":        modelo_sel['metricas_cv'],
+    "metricas_finales":   modelo_sel['metricas_finales'],
+    "matriz_confusion":   modelo_sel['matriz_confusion'],
+    "modelos_comparados": {k: v['roc_auc'] for k, v in modelos_eval.items()},
+    "top10_features":     top10_feat,
+}
+
+print(f"Agente 1: {resumen_a1['filas_originales']:,} filas, {resumen_a1['features_para_modelo']} features finales")
+print(f"Agente 2: modelo={resumen_a2['modelo_ganador']}, AUC={resumen_a2['metricas_cv']['roc_auc']:.4f}")
+
+# Analisis automatico de calidad del modelo
+alertas = []
+
+auc       = resumen_a2['metricas_cv']['roc_auc']
+overfitting = resumen_a2['metricas_cv']['overfitting']
+recall    = resumen_a2['metricas_cv']['recall']
+precision = resumen_a2['metricas_cv']['precision']
+
+balance   = reporte2['balance_clases']
+n0 = balance.get('0_no_match', balance.get('0', 0))
+n1 = balance.get('1_match',    balance.get('1', 0))
+ratio = n0 / n1 if n1 > 0 else 0
+
+if auc < 0.60:
+    alertas.append({
+        "nivel":   "ALTO",
+        "tipo":    "Poder predictivo limitado",
+        "detalle": f"ROC-AUC={auc:.4f}, cerca del azar (0.5). Las features actuales explican parcialmente el comportamiento del match.",
+    })
+elif auc < 0.70:
+    alertas.append({
+        "nivel":   "MEDIO",
+        "tipo":    "Poder predictivo moderado",
+        "detalle": f"ROC-AUC={auc:.4f}. Aceptable para un primer modelo, con margen de mejora.",
+    })
+else:
+    alertas.append({
+        "nivel":   "OK",
+        "tipo":    "Buen poder predictivo",
+        "detalle": f"ROC-AUC={auc:.4f}.",
+    })
+
+if abs(overfitting) > 0.05:
+    alertas.append({
+        "nivel":   "MEDIO",
+        "tipo":    "Posible overfitting",
+        "detalle": f"Diferencia train-test={overfitting:+.4f}. Revisar regularizacion o complejidad.",
+    })
+else:
+    alertas.append({
+        "nivel":   "OK",
+        "tipo":    "Sin overfitting relevante",
+        "detalle": f"Diferencia train-test={overfitting:+.4f}.",
+    })
+
+if recall < 0.50:
+    alertas.append({
+        "nivel":   "ALTO",
+        "tipo":    "Recall bajo en la clase match",
+        "detalle": f"Recall={recall:.4f}. El modelo pierde mas de la mitad de los matches reales.",
+    })
+
+if ratio > 2:
+    alertas.append({
+        "nivel":   "MEDIO",
+        "tipo":    "Desbalance de clases",
+        "detalle": f"Ratio {ratio:.2f}:1 (no-match:match). Se uso class_weight='balanced'.",
+    })
+
+print(f"Alertas detectadas: {len(alertas)}")
+
+# Construccion del prompt para el transformer
+comparativa_texto = "\n".join([
+    f"  - {nombre}: AUC={auc_v:.4f}"
+    for nombre, auc_v in resumen_a2['modelos_comparados'].items()
+])
+
+top5_texto = "\n".join([
+    f"  {i+1}. {feat.replace('_scaled','').replace('_enc','').replace('_',' ')}: {imp:+.4f}"
+    for i, (feat, imp) in enumerate(list(top10_feat.items())[:5])
+])
+
+alertas_texto = "\n".join([
+    f"  [{a['nivel']}] {a['tipo']}: {a['detalle']}"
+    for a in alertas
+])
+
+tp = resumen_a2['matriz_confusion']['TP']
+tn = resumen_a2['matriz_confusion']['TN']
+fp = resumen_a2['matriz_confusion']['FP']
+fn = resumen_a2['matriz_confusion']['FN']
+
+prompt_reporte = f"""
+Eres un Data Scientist que debe explicar los resultados de un pipeline de Machine
+Learning a un equipo de producto no tecnico de una app de citas. El modelo predice
+"like mutuo" (match) entre dos usuarios compatibles por orientacion sexual.
+
+DATOS DEL PIPELINE
+
+Etapa 1 - Preprocesamiento:
+- Pares de usuarios procesados: {resumen_a1['filas_originales']:,}
+- Valores faltantes resueltos: {resumen_a1['nulos_iniciales']:,} a {resumen_a1['nulos_finales']}
+- Outliers tratados: {resumen_a1['outliers_tratados']}
+- Errores de escritura en ciudades corregidos: {resumen_a1['typos_corregidos']}
+- Variables nuevas creadas: {resumen_a1['features_creadas']}
+- Variables finales del modelo: {resumen_a1['features_para_modelo']}
+- Distribucion del resultado real: {resumen_a1['balance_final'].get('1', 0)*100:.1f}% match, {resumen_a1['balance_final'].get('0', 0)*100:.1f}% no match
+
+Etapa 2 - Modelos evaluados (validacion cruzada 5 folds):
+{comparativa_texto}
+
+Modelo elegido: {resumen_a2['modelo_ganador']}
+- ROC-AUC: {resumen_a2['metricas_cv']['roc_auc']:.4f}
+- F1: {resumen_a2['metricas_cv']['f1']:.4f}
+- Precision: {resumen_a2['metricas_cv']['precision']:.4f}
+- Recall: {resumen_a2['metricas_cv']['recall']:.4f}
+- Overfitting (diferencia train-test): {resumen_a2['metricas_cv']['overfitting']:+.4f}
+- Verdaderos positivos (matches detectados): {tp}
+- Verdaderos negativos (no-matches detectados): {tn}
+- Falsos positivos (predijo match sin haberlo): {fp}
+- Falsos negativos (habia match pero no lo detecto): {fn}
+
+Top 5 variables mas influyentes:
+{top5_texto}
+
+Hallazgos de calidad automaticos:
+{alertas_texto}
+
+TAREA
+Redacta un reporte ejecutivo en espanol, en formato Markdown, para un equipo
+de producto no tecnico. Estructura requerida:
+
+1. Resumen ejecutivo (3-4 lineas): que se hizo y el hallazgo mas importante, sin jerga.
+2. Que tan bueno es el modelo: explica el ROC-AUC con una analogia simple. Se honesto si el modelo es debil.
+3. Que hace que dos personas tengan match: traduce las top 5 variables a insights de negocio.
+4. Riesgos y limitaciones: traduce las alertas tecnicas a implicancias de producto.
+5. Proximos pasos recomendados: 3-4 acciones concretas y priorizadas.
+
+Reglas:
+- No uses jerga tecnica sin explicarla entre parentesis la primera vez.
+- Tono profesional y claro, como si presentaras a gerencia.
+- Maximo 600 palabras.
+- Se honesto sobre las limitaciones, no exageres resultados debiles.
+""".strip()
+
+print("Consultando a Mistral AI...")
+
+try:
+    client = Mistral(api_key=API_KEY_MISTRAL)
+    response = client.chat.complete(
+        model=MISTRAL_MODEL,
+        messages=[
+            {
+                "role":    "system",
+                "content": "Eres un Data Scientist senior que comunica resultados tecnicos a equipos no tecnicos. Escribes en espanol, en Markdown, de forma clara y honesta.",
+            },
+            {
+                "role":    "user",
+                "content": prompt_reporte,
+            },
+        ],
+        temperature=0.4,
+        max_tokens=1500,
+    )
+    reporte_md = response.choices[0].message.content
+    mistral_ok = True
+    print("Reporte generado por Mistral AI.")
+
+except Exception as e:
+    mistral_ok = False
+    print(f"Error Mistral: {e}")
+    reporte_md = f"""# Reporte Ejecutivo - Modelo de Prediccion de Match
+
+> Reporte generado con plantilla local. Mistral AI no estuvo disponible: {e}
+
+## Resumen ejecutivo
+Se entrenó un modelo ({resumen_a2['modelo_ganador']}) sobre {resumen_a1['filas_originales']:,} pares
+de usuarios para predecir match mutuo. El modelo alcanzo un AUC de {resumen_a2['metricas_cv']['roc_auc']:.4f}.
+
+## Metricas clave
+- AUC: {resumen_a2['metricas_cv']['roc_auc']:.4f}
+- F1: {resumen_a2['metricas_cv']['f1']:.4f}
+- Precision: {resumen_a2['metricas_cv']['precision']:.4f}
+- Recall: {resumen_a2['metricas_cv']['recall']:.4f}
+
+## Variables mas influyentes
+{top5_texto}
+
+## Alertas detectadas
+{alertas_texto}
+"""
+
+# Encabezado con metadata
+encabezado = f"""---
+Pipeline: Recomendacion y Matchmaking en Apps de Citas
+Transformer: {MISTRAL_MODEL if mistral_ok else 'plantilla local (fallback)'}
+Dataset: {resumen_a1['filas_originales']:,} pares de usuarios
+Modelo: {resumen_a2['modelo_ganador']}
+---
+
+"""
+
+reporte_completo = encabezado + reporte_md
+
+with open(OUTPUT_REPORTE, 'w', encoding='utf-8') as f:
+    f.write(reporte_completo)
+
+resumen_json = {
+    "agente":            "Agente 3 - Comunicador",
+    "transformer_usado": MISTRAL_MODEL if mistral_ok else "plantilla_local",
+    "mistral_exitoso":   mistral_ok,
+    "resumen_agente1":   resumen_a1,
+    "resumen_agente2":   resumen_a2,
+    "alertas_calidad":   alertas,
+    "reporte_markdown":  reporte_md,
+}
+
+with open(OUTPUT_JSON, 'w', encoding='utf-8') as f:
+    json.dump(resumen_json, f, ensure_ascii=False, indent=2)
+
+print(f"Archivos guardados: {OUTPUT_REPORTE}, {OUTPUT_JSON}")
+print("Proceso terminado.")
